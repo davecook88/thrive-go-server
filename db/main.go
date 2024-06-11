@@ -40,3 +40,25 @@ func (c *Client) CreateChat(ctx context.Context, messages []chatgpt.Message ) er
 	_, _, err := c.Collection("thrive-chats").Add(ctx, chatDoc)
 	return err
 }
+
+func (c *Client) UpdateChat(ctx context.Context, chatId string,  messages []chatgpt.Message) error {
+	chatDoc := map[string]interface{}{
+		"messages": messages,
+	}
+	_, err := c.Collection("thrive-chats").Doc(chatId).Set(ctx, chatDoc, firestore.MergeAll)
+	return err
+}
+
+func (c *Client) GetChat(ctx context.Context, chatId string) (*[]chatgpt.Message, error) {
+	doc, err := c.Collection("thrive-chats").Doc(chatId).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var chat struct {
+		Messages []chatgpt.Message `firestore:"messages"`
+	}
+	if err := doc.DataTo(&chat); err != nil {
+		return nil, err
+	}
+	return &chat.Messages, nil
+}
