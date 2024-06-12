@@ -13,38 +13,37 @@ type Client struct {
 	*firestore.Client
 }
 
-
 func NewClient(ctx context.Context, projectID string) (*Client, error) {
 	opt := option.WithCredentialsFile("creds.json")
 
-    app, err := firebase.NewApp(ctx, nil, opt)
-    if err != nil {
-        return nil, err
-    }
+	app, err := firebase.NewApp(ctx, nil, opt)
+	if err != nil {
+		return nil, err
+	}
 
-    client, err := app.Firestore(ctx)
-    if err != nil {
-        return nil, err
-    }
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-    return &Client{Client: client}, nil
+	return &Client{Client: client}, nil
 
 }
 
-
-func (c *Client) CreateChat(ctx context.Context, messages []chatgpt.Message ) error {
+func (c *Client) CreateChat(ctx context.Context, messages []chatgpt.Message) error {
 	chatDoc := map[string]interface{}{
-        "messages": messages,
-        // Add any other fields you want to store in the document
-    }
+		"messages": messages,
+		// Add any other fields you want to store in the document
+	}
 	_, _, err := c.Collection("thrive-chats").Add(ctx, chatDoc)
 	return err
 }
 
-func (c *Client) UpdateChat(ctx context.Context, chatId string,  messages []chatgpt.Message) error {
+func (c *Client) UpdateChat(ctx context.Context, chatId string, messages []chatgpt.Message) error {
 	chatDoc := map[string]interface{}{
 		"messages": messages,
 	}
+	println("Updating chat with messages:", messages)
 	_, err := c.Collection("thrive-chats").Doc(chatId).Set(ctx, chatDoc, firestore.MergeAll)
 	return err
 }
@@ -52,8 +51,10 @@ func (c *Client) UpdateChat(ctx context.Context, chatId string,  messages []chat
 func (c *Client) GetChat(ctx context.Context, chatId string) (*[]chatgpt.Message, error) {
 	doc, err := c.Collection("thrive-chats").Doc(chatId).Get(ctx)
 	if err != nil {
-		return nil, err
+		println("Error getting chat document:", err)
+		return &[]chatgpt.Message{}, nil
 	}
+
 	var chat struct {
 		Messages []chatgpt.Message `firestore:"messages"`
 	}

@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+	"os"
+	"thrive/server/auth"
 	"thrive/server/handlers"
 
 	"github.com/gin-gonic/gin"
@@ -10,9 +12,11 @@ import (
 
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := c.Request.Header.Get("Origin")
+		println("Origin: ", origin, "Allowed Origin: ", os.Getenv("ALLOWED_ORIGIN"))
+		c.Writer.Header().Set("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
@@ -30,6 +34,7 @@ func main() {
 	}
 	r := gin.Default()
 	r.Use(corsMiddleware())
+	r.Use(auth.ValidateWixHeader())
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",

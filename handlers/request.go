@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
+	"thrive/server/auth"
 	"thrive/server/chatgpt"
 	"thrive/server/db"
 
@@ -79,6 +79,12 @@ func CallChatGPT(c *gin.Context, messages []chatgpt.Message) (*chatgpt.Message, 
 
 func ChatGPTHandler(c *gin.Context) {
 	var request UserMessage
+	user_instance := auth.GetUserInstance(c)
+	if user_instance == nil {
+		c.JSON(400, gin.H{"error": "No user instance"})
+		return
+	}
+	fmt.Println(user_instance)
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
@@ -93,16 +99,10 @@ func ChatGPTHandler(c *gin.Context) {
 
 	var existingMessages *[]chatgpt.Message
 
-	if request.ChatID != nil {
-		existingMessages, err = dbClient.GetChat(c, *request.ChatID)
-		if err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-			return
-		}
-	}
-
-	if existingMessages == nil {
-		existingMessages = &[]chatgpt.Message{}
+	existingMessages, err = dbClient.GetChat(c, user_instance.InstanceId)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
 	}
 
 	messages := append(*existingMessages, chatgpt.Message{Role: chatgpt.UserRole, Content: request.Message})
@@ -115,7 +115,7 @@ func ChatGPTHandler(c *gin.Context) {
 
 	messages = append(messages, *chatGPTResponseMessage)
 
-	if err := dbClient.CreateChat(c, messages); err != nil {
+	if err := dbClient.UpdateChat(c, user_instance.InstanceId, messages); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
